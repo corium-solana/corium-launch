@@ -1,0 +1,32 @@
+[workspace]
+members = ["programs/*"]
+resolver = "2"
+
+# The image `solana-verify` builds in, and the toolchain that produced what is
+# deployed. Deploy that artifact (`yarn verify-build`), not `anchor build`: only
+# a Docker build is reproducible, and the explorer's verified badge compares
+# against exactly this.
+#
+# Not the local Agave CLI version. `solana-verify`'s image whitelist is
+# published per release and tops out at 4.0.3, so a 4.2.x pin resolves to no
+# image at all.
+#
+# This toolchain is also stricter about stack frames than 4.2.x, which is how it
+# caught that `try_accounts` for RequestPush/ResolvePush was 500-odd bytes over
+# the 4096-byte limit - a latent miscompile 4.2.x happened to squeeze under. Both
+# are boxed now; see the note on `RequestPush`. If a build ever reports
+# `overflows the maximum allowed frame space`, do not deploy it.
+# https://github.com/solana-foundation/solana-verifiable-build
+[workspace.metadata.cli]
+solana = "4.0.3"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+

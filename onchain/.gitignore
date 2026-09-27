@@ -1,0 +1,25 @@
+.anchor
+target
+node_modules
+.env
+test-ledger
+.DS_Store
+
+# Local test wallets created by DEVNET_TESTING.md
+wallets/
+
+# Program identity, grind leftovers, localnet upgrade-authority fixture.
+# validator.sh writes localnet/deployer.json if it is missing.
+program-keypair.json
+program-keypair*.json
+*-keypair.json
+id.json
+localnet/deployer.json
+
+# localnet harness artifacts: validator ledger, logs, and built binaries
+localnet/.ledger/
+localnet/.validator.log
+localnet/mock-magicblock-vrf/out/
+localnet/mock-magicblock-vrf/target/
+localnet/*.so
+localnet/corium_zero-local.so
