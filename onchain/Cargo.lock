@@ -388,6 +388,7 @@ name = "corium_launch"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "solana-instructions-sysvar",
  "solana-security-txt",
  "solana-sha256-hasher",
 ]

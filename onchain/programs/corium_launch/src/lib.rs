@@ -46,6 +46,9 @@ use anchor_lang::system_program::{self, Transfer};
 use solana_sha256_hasher::hashv;
 use solana_security_txt::security_txt;
 
+pub mod pots;
+pub use pots::*;
+
 declare_id!("NovanpiewpH4zvYgtzAQN2zWQ94KcKWrHCTswWdZ1Y1");
 
 // Read by explorers (Solscan, Solana Explorer): who to tell about a bug.
@@ -468,11 +471,97 @@ pub mod corium_launch {
         emit!(Swept { distribution: d.key(), amount: rest });
         Ok(())
     }
+
+    // ---- pots: sponsored bounties and requests (see pots.rs)
+
+    pub fn init_pot_config(ctx: Context<InitPotConfig>, params: PotParams) -> Result<()> {
+        pots::init_pot_config_ix(ctx, params)
+    }
+
+    pub fn set_pot_config(ctx: Context<SetPotConfig>, params: PotParams) -> Result<()> {
+        pots::set_pot_config_ix(ctx, params)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn open_pot(
+        ctx: Context<OpenPot>,
+        nonce: u64,
+        kind: u8,
+        deadline: i64,
+        creator_bps: u16,
+        min_stake: u64,
+        amount: u64,
+        brief: String,
+    ) -> Result<()> {
+        pots::open_pot_ix(ctx, nonce, kind, deadline, creator_bps, min_stake, amount, brief)
+    }
+
+    pub fn fund(ctx: Context<Fund>, amount: u64) -> Result<()> {
+        pots::fund_ix(ctx, amount)
+    }
+
+    pub fn enter(ctx: Context<Enter>, stake: u64) -> Result<()> {
+        pots::enter_ix(ctx, stake)
+    }
+
+    pub fn claim_stake(ctx: Context<ClaimStake>) -> Result<()> {
+        pots::claim_stake_ix(ctx)
+    }
+
+    pub fn release_stake(ctx: Context<ReleaseStake>) -> Result<()> {
+        pots::release_stake_ix(ctx)
+    }
+
+    pub fn reject_entry(ctx: Context<RejectEntry>) -> Result<()> {
+        pots::reject_entry_ix(ctx)
+    }
+
+    pub fn mark_winner(ctx: Context<MarkWinner>) -> Result<()> {
+        pots::mark_winner_ix(ctx)
+    }
+
+    pub fn settle(ctx: Context<Settle>) -> Result<()> {
+        pots::settle_ix(ctx)
+    }
+
+    pub fn claim_finisher(ctx: Context<ClaimFinisher>) -> Result<()> {
+        pots::claim_finisher_ix(ctx)
+    }
+
+    // ---- the stretch ledger (see pots.rs)
+
+    pub fn stretch_begin(ctx: Context<StretchBegin>) -> Result<()> {
+        pots::stretch_begin_ix(ctx)
+    }
+
+    pub fn stretch_end(ctx: Context<StretchEnd>) -> Result<()> {
+        pots::stretch_end_ix(ctx)
+    }
+
+    pub fn stretch_finish(ctx: Context<StretchFinish>) -> Result<()> {
+        pots::stretch_finish_ix(ctx)
+    }
+
+    pub fn stretch_unlock(ctx: Context<StretchUnlock>) -> Result<()> {
+        pots::stretch_unlock_ix(ctx)
+    }
+
+    pub fn close_credit(ctx: Context<CloseCredit>) -> Result<()> {
+        pots::close_credit_ix(ctx)
+    }
+
+    pub fn start_return(ctx: Context<StartReturn>) -> Result<()> {
+        pots::start_return_ix(ctx)
+    }
+
+    pub fn refund(ctx: Context<Refund>) -> Result<()> {
+        pots::refund_ix(ctx)
+    }
 }
 
 // ------------------------------------------------------------------ tokens
 
-fn read_u64(data: &[u8], at: usize) -> u64 {
+pub(crate) fn read_u64(data: &[u8], at: usize) -> u64 {
     u64::from_le_bytes(data[at..at + 8].try_into().unwrap())
 }
 
@@ -1043,4 +1132,72 @@ pub enum LaunchError {
     NotTreasury,
     #[msg("The new admin cannot be the default address")]
     BadAdmin,
+    #[msg("A pot needs a positive amount")]
+    EmptyPot,
+    #[msg("Deadline is outside the allowed range")]
+    BadDeadline,
+    #[msg("The coin has already graduated")]
+    AlreadyGraduated,
+    #[msg("Unknown pot kind")]
+    BadKind,
+    #[msg("The pot is not in the right state for this")]
+    PotClosed,
+    #[msg("The pot's deadline has passed")]
+    PastDeadline,
+    #[msg("Signer is not the coin's creator")]
+    NotCreator,
+    #[msg("The coin is past the point where it can enter a request")]
+    EntryTooLate,
+    #[msg("The coin is not entered in this request")]
+    NotEntered,
+    #[msg("The coin did not graduate before the current winner")]
+    NotEarlier,
+    #[msg("The pot has no winner")]
+    NoWinner,
+    #[msg("Still in the grace period after the winner graduated")]
+    InGrace,
+    #[msg("The pot has a winner")]
+    HasWinner,
+    #[msg("Already refunded")]
+    AlreadyRefunded,
+    #[msg("Not a supported mint")]
+    BadMint,
+    #[msg("The mint has an extension pots do not accept")]
+    MintExtension,
+    #[msg("Only the request's opener can do this")]
+    NotSponsor,
+    #[msg("The request's opener rejected this coin")]
+    Rejected,
+    #[msg("The pot would exceed the SOL cap")]
+    PotTooLarge,
+    #[msg("The stake is below the request's minimum")]
+    StakeTooSmall,
+    #[msg("The entry staked nothing")]
+    NothingStaked,
+    #[msg("Only the winning entry's stake goes to the funders")]
+    NotWinner,
+    #[msg("The request isn't decided for this entry yet")]
+    NotDecided,
+    #[msg("Already claimed")]
+    AlreadyClaimed,
+    #[msg("Not this contribution's funder")]
+    NotFunder,
+    #[msg("The pot is below the minimum")]
+    PotTooSmall,
+    #[msg("A stretch bracket must end in the same transaction")]
+    NoBracketEnd,
+    #[msg("This wallet already has an open stretch bracket")]
+    BracketOpen,
+    #[msg("No open stretch bracket")]
+    NoBracket,
+    #[msg("Still inside the hold window")]
+    InHold,
+    #[msg("This wallet gave up its share by unlocking early")]
+    Forfeited,
+    #[msg("No stretch credit")]
+    NoCredit,
+    #[msg("Nothing locked")]
+    NothingLocked,
+    #[msg("Tokens are still locked")]
+    StillLocked,
 }
